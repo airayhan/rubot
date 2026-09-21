@@ -1,0 +1,549 @@
+{
+  "name": "Blood Donor Approval System",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "1kCLiagR5UWdWtO7D2HMwkZl435FR7nAssG9LODd6tls",
+          "mode": "list",
+          "cachedResultName": "Student Information Form (Responses)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1kCLiagR5UWdWtO7D2HMwkZl435FR7nAssG9LODd6tls/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2100027248,
+          "mode": "list",
+          "cachedResultName": "Form responses 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1kCLiagR5UWdWtO7D2HMwkZl435FR7nAssG9LODd6tls/edit#gid=2100027248"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "id": "fb7eb63d-2628-4a4b-ab4c-4033f5bb9ea5",
+      "name": "New Form Response (Google Sheets)",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        80
+      ],
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "hHLKBCRIGbFppWyE",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "dept-ier",
+              "leftValue": "={{ $json.Department }}",
+              "rightValue": "IER",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "name-not-empty",
+              "leftValue": "={{ $json['নাম'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "phone-not-empty",
+              "leftValue": "={{ $json['Phone Number'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "phone-format",
+              "leftValue": "={{ $json['Phone Number'] }}",
+              "rightValue": "^01\\d{9}$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "consent-given",
+              "leftValue": "={{ $json.Consent }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d41b16a0-b34c-46d3-8194-5124323ba555",
+      "name": "Validate Submission",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -208,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "blood_donors",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "name",
+              "fieldValue": "={{ $json['নাম'] }}"
+            },
+            {
+              "fieldId": "department",
+              "fieldValue": "={{ $json.Department }}"
+            },
+            {
+              "fieldId": "blood_group",
+              "fieldValue": "={{ $json['Blood Group'] }}"
+            },
+            {
+              "fieldId": "phone",
+              "fieldValue": "={{ $json['Phone Number'] }}"
+            },
+            {
+              "fieldId": "consent",
+              "fieldValue": "={{ $json.Consent ? true : false }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "pending"
+            }
+          ]
+        }
+      },
+      "id": "6964bd60-3b68-4f86-9413-515bdcbf2a36",
+      "name": "Insert Donor into Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        16,
+        -16
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "5CcEEBjKkEGKxe9c",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "1905819735",
+        "text": "=🩸 নতুন Blood Donor Submission\nনাম: {{ $(\"New Form Response (Google Sheets)\").item.json[\"নাম\"] }}\nDepartment: {{ $(\"New Form Response (Google Sheets)\").item.json.Department }}\nBlood Group: {{ $(\"New Form Response (Google Sheets)\").item.json[\"Blood Group\"] }}\nPhone: {{ $(\"New Form Response (Google Sheets)\").item.json[\"Phone Number\"] }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Approve",
+                    "additionalFields": {
+                      "callback_data": "=approve_{{ $json.id }}"
+                    }
+                  },
+                  {
+                    "text": "❌ Reject",
+                    "additionalFields": {
+                      "callback_data": "=reject_{{ $json.id }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "a601d1a8-f491-4ee7-ad9b-ef6773fd9e7b",
+      "name": "Notify Admin on Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        -16
+      ],
+      "webhookId": "43ed52d0-f9f3-4049-aada-71fccc057167",
+      "credentials": {
+        "telegramApi": {
+          "id": "kCzaxWJ1SUXUu0VC",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "b94c273b-7f3b-4775-9ab8-06c71fc71e12",
+      "name": "Skip Invalid Submission",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        16,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "e505a403-d51c-47cb-b5b6-bc7a5507ae9c",
+      "name": "Telegram Callback Query",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -832,
+        448
+      ],
+      "webhookId": "6d88d376-6900-4b43-b174-e4b4bd983e7c",
+      "credentials": {
+        "telegramApi": {
+          "id": "kCzaxWJ1SUXUu0VC",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cb = $json.callback_query;\nconst data = cb.data || '';\nconst parts = data.split('_');\nconst action = parts[0];\nconst rowId = parts.slice(1).join('_');\nreturn [{ json: {\n  action,\n  rowId,\n  messageId: cb.message.message_id,\n  chatId: cb.message.chat.id,\n  callbackQueryId: cb.id,\n} }];\n"
+      },
+      "id": "56d295a2-431d-4bd3-b1bd-7bc7b79940c2",
+      "name": "Parse Callback Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "is-approve",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "45969bd9-2465-44f1-b3ad-2414d9489d65",
+      "name": "Approve or Reject?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        928,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "blood_donors",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.rowId }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "approved"
+            },
+            {
+              "fieldId": "decided_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "fb6220c4-ff84-479c-bef0-9860cb2d51a3",
+      "name": "Mark Donor Approved",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        352
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "5CcEEBjKkEGKxe9c",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $('Parse Callback Data').item.json.chatId }}",
+        "messageId": "={{ $('Parse Callback Data').item.json.messageId }}",
+        "text": "✅ Approved হয়েছে",
+        "additionalFields": {}
+      },
+      "id": "91231a07-d221-4e95-af33-cdc362baf507",
+      "name": "Edit Message: Approved",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1376,
+        352
+      ],
+      "webhookId": "6091749a-ad48-4967-8ce2-8a4f0eef28e4",
+      "credentials": {
+        "telegramApi": {
+          "id": "kCzaxWJ1SUXUu0VC",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "blood_donors",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.rowId }}"
+            }
+          ]
+        }
+      },
+      "id": "9b3b28ac-e000-463c-8cdc-de06e718ae24",
+      "name": "Mark Donor Rejected",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        544
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "5CcEEBjKkEGKxe9c",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $('Parse Callback Data').item.json.chatId }}",
+        "messageId": "={{ $('Parse Callback Data').item.json.messageId }}",
+        "text": "❌ Rejected হয়েছে",
+        "additionalFields": {}
+      },
+      "id": "23618652-ebd8-459c-80dc-106d083d98e2",
+      "name": "Edit Message: Rejected",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1376,
+        544
+      ],
+      "webhookId": "16ddbb51-31cf-493a-b31c-7d256e934bde",
+      "credentials": {
+        "telegramApi": {
+          "id": "kCzaxWJ1SUXUu0VC",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Form Response (Google Sheets)": {
+      "main": [
+        [
+          {
+            "node": "Validate Submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Submission": {
+      "main": [
+        [
+          {
+            "node": "Insert Donor into Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Invalid Submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Donor into Supabase": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin on Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Callback Query": {
+      "main": [
+        [
+          {
+            "node": "Parse Callback Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Callback Data": {
+      "main": [
+        [
+          {
+            "node": "Approve or Reject?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve or Reject?": {
+      "main": [
+        [
+          {
+            "node": "Mark Donor Approved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Donor Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Donor Approved": {
+      "main": [
+        [
+          {
+            "node": "Edit Message: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Donor Rejected": {
+      "main": [
+        [
+          {
+            "node": "Edit Message: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "21a8e780-a9fc-4f76-b1a2-c2b42a8dda40",
+  "meta": {
+    "instanceId": "b651f8fe7464995d5956d9036d6dd83f5c87778a1d35927596f0125222733305"
+  },
+  "nodeGroups": [
+    {
+      "id": "c50b9440-0865-493f-8a53-e38c2dc5a172",
+      "name": "Collect & notify",
+      "nodeIds": [
+        "d41b16a0-b34c-46d3-8194-5124323ba555",
+        "6964bd60-3b68-4f86-9413-515bdcbf2a36",
+        "a601d1a8-f491-4ee7-ad9b-ef6773fd9e7b",
+        "b94c273b-7f3b-4775-9ab8-06c71fc71e12"
+      ],
+      "description": "New Google Form response comes in from the sheet, gets validated, saved to the donor list, and the admin gets a Telegram message with approve/rej"
+    },
+    {
+      "id": "80314b21-5c1b-4095-92fd-9e51622f9d61",
+      "name": "Handle decision",
+      "nodeIds": [
+        "56d295a2-431d-4bd3-b1bd-7bc7b79940c2",
+        "45969bd9-2465-44f1-b3ad-2414d9489d65",
+        "fb6220c4-ff84-479c-bef0-9860cb2d51a3",
+        "9b3b28ac-e000-463c-8cdc-de06e718ae24",
+        "91231a07-d221-4e95-af33-cdc362baf507",
+        "23618652-ebd8-459c-80dc-106d083d98e2"
+      ],
+      "description": "When the admin taps Approve or Reject on Telegram, updates the donor record and edits the original message so it cannot be clicked again"
+    }
+  ],
+  "id": "dBmDXmEFd1VQLV5w",
+  "tags": []
+}
